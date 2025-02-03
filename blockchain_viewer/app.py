@@ -53,10 +53,10 @@ def index():
 # get temperature
 def get_temperature():
     if request.method == "POST":
-        file =  open('~/sys/bus/w1/devices/28-d6e37d0a6461/w1_slave')
+        file = open("/sys/bus/w1/devices/28-d6e37d0a6461/w1_slave")
         content = file.read()
         file.close()
-        pos = content.rfind('t=') + 2
+        pos = content.rfind("t=") + 2
         temperature_string = content[pos:]
         sensor_temp = float(temperature_string) / 1000
         return sensor_temp

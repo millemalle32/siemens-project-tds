@@ -18,9 +18,21 @@ receiver_address = "0x8152f15133648479166B17E3C75Ad1856E2C2935"
 
 
 machine_id = 12134
-temperature = 63
+#temperature = 63
+
+# Get the temperature
+def get_temperature():
+    file = open("/sys/bus/w1/devices/28-d6e37d0a6461/w1_slave")
+    content = file.read()
+    file.close()
+    pos = content.rfind("t=") + 2
+    temperature_string = content[pos:]
+    sensor_temp = int(float(temperature_string) / 1000)
+    print(sensor_temp)
+    return sensor_temp
 
 # Encode machine data into transaction data (Hex format)
+temperature = get_temperature()
 data_payload = f"{machine_id:04x}{temperature:02x}"
 hex_data = "0x" + data_payload  # Convert to Ethereum data format
 
