@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Blockchain Transaction Viewer</title>
+    <script>
+        async function fetchTransactions() {
+            const walletAddress = document.getElementById("wallet").value;
+            const response = await fetch("/get_transactions", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ wallet_address: walletAddress })
+            });
+
+            const data = await response.json();
+            const resultDiv = document.getElementById("result");
+            resultDiv.innerHTML = "";
+
+            if (data.error) {
+                resultDiv.innerHTML = `<p style="color:red;">${data.error}</p>`;
+                return;
+            }
+
+            let html = `<h3>Transactions for ${walletAddress}</h3>`;
+            html += "<table border='1'><tr><th>Time</th><th>Machine ID</th><th>Temperature</th><th>Transaction</th></tr>";
+
+            data.forEach(tx => {
+                html += `<tr>
+                    <td>${tx.timestamp}</td>
+                    <td>${tx.machine_id}</td>
+                    <td>${tx.temperature}°C</td>
+                    <td><a href="${tx.etherscan_link}" target="_blank">View</a></td>
+                </tr>`;
+            });
+
+            html += "</table>";
+            resultDiv.innerHTML = html;
+        }
+    </script>
+</head>
+<body>
+    <h2>Enter a Wallet Address to Fetch Transactions</h2>
+    <input type="text" id="wallet" placeholder="0xYourWalletAddress">
+    <button onclick="fetchTransactions()">Get Transactions</button>
+    <div id="result"></div>
+    <h2>...or get the current temperature</h2>
+    <form action="{{url_for("get_temperature")}}" method="post">
+    <button type="submit">Get current Temperature</button></form>
+    <div id="sensor_temp"></div>
+    
+</body>
+</html>
+
