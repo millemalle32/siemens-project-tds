@@ -2,7 +2,10 @@ from web3 import Web3
 import time
 import json
 import datetime
+import event_tracker
 
+
+    
 sepolia_url = "https://sepolia.infura.io/v3/835d10ec0e834928b10658f71faffe74"
 web3 = Web3(Web3.HTTPProvider(sepolia_url))
 
@@ -23,25 +26,13 @@ ERROR_NAME = "Temperature Warning"
 LOCATION = "Munich, Germany"
 
 # This should be the json file path
-log_file = "xxx"
+log_file = "/siemens-project-tds/blockchain_viewer/json-table.json"
 
 
-def get_temperature():
-    try:
-        with open("/sys/bus/w1/devices/28-d6e37d0a6461/w1_slave") as file:
-            content = file.read()
-            pos = content.rfind("t=") + 2
-            temperature_string = content[pos:]
-            sensor_temp = int(float(temperature_string) / 1000)
-            print(f"🌡 Current Temperature: {sensor_temp}°C")
-            return sensor_temp
-    except FileNotFoundError:
-        print("❌ Sensor file not found.")
-        return None
 
 
 def send_transaction(temperature):
-    
+    print("Starting with transaction process")
     data_payload = f"{MACHINE_ID:012x}{temperature:02x}"
     hex_data = "0x" + data_payload
     nonce = web3.eth.get_transaction_count(sender_address)
@@ -59,6 +50,7 @@ def send_transaction(temperature):
   
     signed_tx = web3.eth.account.sign_transaction(tx, private_key)
     tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    
 
     print(f"✅ Transaction sent! Hash: {web3.to_hex(tx_hash)}")
     log_transaction(temperature, web3.to_hex(tx_hash))
@@ -89,13 +81,10 @@ def log_transaction(temperature, tx_hash):
 
     print(f"✅ Transaction logged in {log_file}")
 
+#starts tracking
+high_temp = event_tracker.start_tracking()
+if high_temp is not None:
+    send_transaction(high_temp)
 
 if __name__ == "__main__":
-    while True:
-        temperature = get_temperature()
-        if temperature is not None and temperature > 30:
-            print("⚠️ Temperature exceeds 30°C! Uploading to blockchain...")
-            send_transaction(temperature)
-        else:
-            print("ℹ️ Temperature is normal. No action required.")
-        time.sleep(30)  
+    app.run(host="0.0.0.0") 
