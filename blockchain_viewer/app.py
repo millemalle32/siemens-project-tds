@@ -1,101 +1,101 @@
-from flask import Flask, render_template, request, jsonify
-import requests
 from web3 import Web3
+import time
+import json
 import datetime
 
-# Flask App
-app = Flask(__name__)
+sepolia_url = "https://sepolia.infura.io/v3/835d10ec0e834928b10658f71faffe74"
+web3 = Web3(Web3.HTTPProvider(sepolia_url))
+
+if web3.is_connected():
+    print("✅ Connected to Sepolia Testnet!")
+else:
+    print("❌ Connection failed!")
+    exit()
+
+sender_address = "0x116446b40F59c09D29186d600114d614ffE39691"
+private_key = "366a4abde5b129175ccd4bfbdfd3e36853c9192e3cf595d94d70d64c8400f7bf"
+receiver_address = "0x8152f15133648479166B17E3C75Ad1856E2C2935"
+
+MACHINE_ID = 959293458800
+CHAIN_TYPE = "Maas"
+PRODUCT_ID = "Pump MPHX-E"
+ERROR_NAME = "Temperature Warning"
+LOCATION = "Munich, Germany"
+
+# This should be the json file path
+log_file = "xxx"
 
 
-# Etherscan API Constants
-ETHERSCAN_API_KEY = "DMR9TJXC5GWGQWNMQKJMRZ1ZCZPHPU86P4"  # Replace with your API Key
-SEPOLIA_API_URL = "https://api-sepolia.etherscan.io/api"
+def get_temperature():
+    try:
+        with open("/sys/bus/w1/devices/28-d6e37d0a6461/w1_slave") as file:
+            content = file.read()
+            pos = content.rfind("t=") + 2
+            temperature_string = content[pos:]
+            sensor_temp = int(float(temperature_string) / 1000)
+            print(f"🌡 Current Temperature: {sensor_temp}°C")
+            return sensor_temp
+    except FileNotFoundError:
+        print("❌ Sensor file not found.")
+        return None
 
-# Test Var 
-# wallet_address = "0x116446b40F59c09D29186d600114d614ffE39691"
 
-# Function to fetch transactions from a wallet
-def fetch_wallet_transactions(wallet_address):
-    url = f"{SEPOLIA_API_URL}?module=account&action=txlist&address={wallet_address}&startblock=0&endblock=99999999&sort=desc&apikey={ETHERSCAN_API_KEY}"
+def send_transaction(temperature):
+    
+    data_payload = f"{MACHINE_ID:012x}{temperature:02x}"
+    hex_data = "0x" + data_payload
+    nonce = web3.eth.get_transaction_count(sender_address)
 
-    response = requests.get(url)
+    tx = {
+        "nonce": nonce,
+        "to": receiver_address,  
+        "value": web3.to_wei(0, "ether"),  
+        "gas": 50000,
+        "gasPrice": web3.to_wei("20", "gwei"),
+        "chainId": 11155111, 
+        "data": hex_data  
+    }
+
+  
+    signed_tx = web3.eth.account.sign_transaction(tx, private_key)
+    tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+
+    print(f"✅ Transaction sent! Hash: {web3.to_hex(tx_hash)}")
+    log_transaction(temperature, web3.to_hex(tx_hash))
+
+def log_transaction(temperature, tx_hash):
+    timestamp = datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')
+    log_entry = {
+        "Machine ID": MACHINE_ID,
+        "Chain Type": CHAIN_TYPE,
+        "Product ID": PRODUCT_ID,
+        "Error Name": ERROR_NAME,
+        "Temperature": temperature,
+        "Location": LOCATION,
+        "Timestamp": timestamp,
+        "Transaction ID": tx_hash
+    }
 
     try:
-        data = response.json()
-    except ValueError:
-        return {"error": "Invalid JSON response"}
+        with open(log_file, "r") as file:
+            data = json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        data = []
 
-    if "result" in data and isinstance(data["result"], list):
-        return data["result"]
-    else:
-        return {"error": "No transactions found"}
+    data.append(log_entry)
 
-# Function to decode transaction data (Machine ID + Temperature)
-def decode_transaction_data(hex_data):
-    if hex_data.startswith("0x"):
-        hex_data = hex_data[2:]  # Remove "0x" prefix
+    with open(log_file, "w") as file:
+        json.dump(data, file, indent=4)
 
-    if len(hex_data) < 6:
-        return None, None
+    print(f"✅ Transaction logged in {log_file}")
 
-    machine_id = int(hex_data[:4], 16)  # First 4 characters = Machine ID
-    temperature = int(hex_data[4:], 16)  # Remaining 2 characters = Temperature
 
-    return machine_id, temperature
-
-# Route for the website
-@app.route("/index")
-
-def index():
-    return render_template("index.html")
-    
-@app.route("/temperatur", methods= ["GET", "POST"])
-# get temperature
-def get_temperature():
-    if request.method == "POST":
-        file = open("/sys/bus/w1/devices/28-d6e37d0a6461/w1_slave")
-        content = file.read()
-        file.close()
-        pos = content.rfind("t=") + 2
-        temperature_string = content[pos:]
-        sensor_temp = float(temperature_string) / 1000
-        return sensor_temp
-    return render_template ("index.html")
-    
-
-# API Route to get transactions
-@app.route("/get_transactions", methods=["POST"])
-def get_transactions():
-    wallet_address = request.json.get("wallet_address")
-    transactions = fetch_wallet_transactions(wallet_address)
-
-    if "error" in transactions:
-        return jsonify({"error": transactions["error"]})
-
-    result = []
-
-    for tx in transactions:
-        tx_hash = tx["hash"]
-        timestamp = int(tx["timeStamp"])
-        readable_time = datetime.datetime.utcfromtimestamp(timestamp).strftime('%Y-%m-%d %H:%M:%S')
-        hex_data = tx.get("input", "")
-
-        if hex_data and hex_data != "0x":
-            machine_id, temperature = decode_transaction_data(hex_data)
-            if machine_id and temperature:
-                result.append({
-                    "tx_hash": tx_hash,
-                    "timestamp": readable_time,
-                    "machine_id": machine_id,
-                    "temperature": temperature,
-                    "etherscan_link": f"https://sepolia.etherscan.io/tx/{tx_hash}"
-                })
-
-    return jsonify(result)
-
-# Run Flask App
-# if __name__ == "__main__":
-    # app.run(debug=True)
-    
 if __name__ == "__main__":
-    app.run(host="0.0.0.0")
+    while True:
+        temperature = get_temperature()
+        if temperature is not None and temperature > 30:
+            print("⚠️ Temperature exceeds 30°C! Uploading to blockchain...")
+            send_transaction(temperature)
+        else:
+            print("ℹ️ Temperature is normal. No action required.")
+        time.sleep(30)  
