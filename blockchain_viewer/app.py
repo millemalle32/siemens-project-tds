@@ -1,10 +1,17 @@
+from flask import Flask, render_template, request, jsonify
 from web3 import Web3
 import time
 import json
 import datetime
 import event_tracker
 
+# Flask App
+app = Flask(__name__)
 
+# Route for the test website
+@app.route("/test")
+def index():
+    return render_template("test.html")
     
 sepolia_url = "https://sepolia.infura.io/v3/835d10ec0e834928b10658f71faffe74"
 web3 = Web3(Web3.HTTPProvider(sepolia_url))
@@ -18,17 +25,20 @@ else:
 sender_address = "0x116446b40F59c09D29186d600114d614ffE39691"
 private_key = "366a4abde5b129175ccd4bfbdfd3e36853c9192e3cf595d94d70d64c8400f7bf"
 receiver_address = "0x8152f15133648479166B17E3C75Ad1856E2C2935"
-
 MACHINE_ID = 959293458800
 CHAIN_TYPE = "Maas"
 PRODUCT_ID = "Pump MPHX-E"
-ERROR_NAME = "Temperature Warning"
+ERROR_NAME = "Warning - Reached Overtemperature!! (>60 C)"
 LOCATION = "Munich, Germany"
-
 # This should be the json file path
-log_file = "/siemens-project-tds/blockchain_viewer/json-table.json"
+log_file = "/root/siemens-project-tds/blockchain_viewer/json-table.json"
 
-
+# Route for the website
+@app.route("/json", methods=["GET"])
+def send_json():
+    with open (log_file) as json_file:
+        data = json.load(json_file)
+    return jsonify(data)
 
 
 def send_transaction(temperature):
@@ -49,7 +59,7 @@ def send_transaction(temperature):
 
   
     signed_tx = web3.eth.account.sign_transaction(tx, private_key)
-    tx_hash = web3.eth.send_raw_transaction(signed_tx.rawTransaction)
+    tx_hash = web3.eth.send_raw_transaction(signed_tx.raw_transaction)
     
 
     print(f"✅ Transaction sent! Hash: {web3.to_hex(tx_hash)}")
@@ -85,6 +95,8 @@ def log_transaction(temperature, tx_hash):
 high_temp = event_tracker.start_tracking()
 if high_temp is not None:
     send_transaction(high_temp)
+
+
 
 if __name__ == "__main__":
     app.run(host="0.0.0.0") 
