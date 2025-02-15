@@ -38,5 +38,15 @@
         "Location": "Munich, Germany",
         "Timestamp": "2025-02-04 21:17:46",
         "Transaction ID": "0x433304557671dc5af1863dd6f353356d3cac1d612386243ab1227044d374693f"
+    },
+    {
+        "Machine ID": 959293458800,
+        "Chain Type": "Maas",
+        "Product ID": "Pump MPHX-E",
+        "Error Name": "Warning - Reached Overtemperature!! (>60 C)",
+        "Temperature": 31,
+        "Location": "Munich, Germany",
+        "Timestamp": "2025-02-05 17:10:55",
+        "Transaction ID": "0x4da1f82a152b0c60479d5a1ab5b40df2e801e8a153440da7f366fe4b2b73d3d0"
     }
 ]

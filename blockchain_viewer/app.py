@@ -11,7 +11,7 @@ app = Flask(__name__)
 # Route for the test website
 @app.route("/test")
 def index():
-    return render_template("test.html")
+    return "<h1 style='color:blue'>Hello There!</h1>"
     
 sepolia_url = "https://sepolia.infura.io/v3/835d10ec0e834928b10658f71faffe74"
 web3 = Web3(Web3.HTTPProvider(sepolia_url))
@@ -21,6 +21,7 @@ if web3.is_connected():
 else:
     print("❌ Connection failed!")
     exit()
+    
 
 sender_address = "0x116446b40F59c09D29186d600114d614ffE39691"
 private_key = "366a4abde5b129175ccd4bfbdfd3e36853c9192e3cf595d94d70d64c8400f7bf"
